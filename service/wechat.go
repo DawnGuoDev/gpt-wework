@@ -67,6 +67,7 @@ func TalkWeixin(c *gin.Context) {
 	token := token
 	receiverId := corpid
 	encodingAeskey := encodingAesKey
+	fmt.Printf("token is %s \n", token)
 	verifyMsgSign := c.Query("msg_signature")
 	verifyTimestamp := c.Query("timestamp")
 	verifyNonce := c.Query("nonce")
@@ -78,6 +79,7 @@ func TalkWeixin(c *gin.Context) {
 	if err != nil {
 		fmt.Println("err:  " + err.Error())
 	}
+	fmt.Printf("msg is %v\n", weixinUserAskMsg)
 	accessToken, err := accessToken()
 	if err != nil {
 		c.JSON(500, "ok")
@@ -93,8 +95,8 @@ func TalkWeixin(c *gin.Context) {
 		c.JSON(200, "ok")
 		return
 	}
-	fmt.Printf("get message %s \n", msgRet)
-	// go handleMsgRet(msgRet)
+	fmt.Printf("get message %v \n", msgRet)
+	go handleMsgRet(msgRet)
 	c.JSON(200, "ok")
 }
 
@@ -121,18 +123,19 @@ func handleMsgRet(msgRet MsgRet) {
 		return
 	}
 	current := msgRet.MsgList[size-1]
-	userId := current.ExternalUserid
+	// userId := current.ExternalUserid
 	kfId := current.OpenKfid
+	fmt.Printf("kfId is %v \n", kfId)
 	content := current.Text.Content
 	if content == "" {
 		return
 	}
-	ret, err := AskOnConversation(content, userId, weworkConversationSize)
-	if err != nil {
-		TalkToUser(userId, kfId, content, "服务器火爆")
-		return
-	}
-	TalkToUser(userId, kfId, content, ret)
+	// ret, err := AskOnConversation(content, userId, weworkConversationSize)
+	// if err != nil {
+	// TalkToUser(userId, kfId, content, "服务器火爆")
+	// return
+	// }
+	// TalkToUser(userId, kfId, content, ret)
 }
 
 func isRetry(signature string) bool {
@@ -148,7 +151,8 @@ func isRetry(signature string) bool {
 
 func getMsgs(accessToken, msgToken string) (MsgRet, error) {
 	var msgRet MsgRet
-	url := "https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg?access_token=" + accessToken
+	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg?access_token=%s&debug=1", accessToken)
+	// url := "https://qyapi.weixin.qq.com/cgi-bin/kf/sync_msg?access_token=" + accessToken
 	method := "POST"
 	payload := strings.NewReader(fmt.Sprintf(`{"token" : "%s"}`, msgToken))
 	client := &http.Client{}
@@ -178,6 +182,7 @@ func accessToken() (string, error) {
 	var tokenCacheKey = "tokenCache"
 	data, found := tokenCache.Get(tokenCacheKey)
 	if found {
+		fmt.Println("found token")
 		return fmt.Sprintf("%v", data), nil
 	}
 	urlBase := "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=%s&corpsecret=%s"
@@ -204,6 +209,7 @@ func accessToken() (string, error) {
 	s := string(body)
 	var accessToken AccessToken
 	json.Unmarshal([]byte(s), &accessToken)
+	fmt.Printf("accessToken is %v \n", accessToken)
 	token := accessToken.AccessToken
 	tokenCache.Set(tokenCacheKey, token, 5*time.Minute)
 	return token, nil
