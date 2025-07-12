@@ -93,7 +93,8 @@ func TalkWeixin(c *gin.Context) {
 		c.JSON(200, "ok")
 		return
 	}
-	go handleMsgRet(msgRet)
+	fmt.Printf("get message %s \n", msgRet)
+	// go handleMsgRet(msgRet)
 	c.JSON(200, "ok")
 }
 
